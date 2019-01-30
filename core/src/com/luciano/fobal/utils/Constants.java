@@ -57,6 +57,9 @@ public class Constants
     public static final Vector2 ARCO_IZQUIERDO_POS =
             new Vector2(PARED_GROSOR/2, PARED_GROSOR/2);
 
+    public static final int PORT = 50505;
+    public static final String HOST = "localhost";
+
     public enum Formas
     {
         CAJA,

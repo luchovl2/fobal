@@ -14,6 +14,7 @@ import com.badlogic.gdx.physics.box2d.World;
 import com.luciano.fobal.Scenes.Hud;
 import com.luciano.fobal.utils.Constants;
 import com.luciano.fobal.utils.FobalContactListener;
+import io.socket.client.Socket;
 
 public class FobalScreen extends ScreenAdapter
 {
@@ -27,6 +28,8 @@ public class FobalScreen extends ScreenAdapter
 
     public AssetManager manager;
     private Music music;
+
+    private Socket socket;
 
     public FobalScreen()
     {}
