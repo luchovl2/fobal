@@ -2,14 +2,13 @@ package com.luciano.fobal;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.assets.AssetManager;
-import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.luciano.fobal.Scenes.Hud;
@@ -17,31 +16,44 @@ import com.luciano.fobal.entities.Arco;
 import com.luciano.fobal.entities.Jugador;
 import com.luciano.fobal.entities.Pared;
 import com.luciano.fobal.entities.Pelota;
+import com.luciano.fobal.packets.ActionPacket;
 import com.luciano.fobal.utils.AIRival;
 import com.luciano.fobal.utils.Constants;
+import com.luciano.fobal.utils.Events;
+import io.socket.client.Socket;
+
+import java.util.Optional;
 
 import static com.luciano.fobal.utils.Constants.PPM;
 
 public class Level
 {
-    public int score1, score2;
+    private Socket socket;
+
+    private int score1, score2;
+    private boolean gameOver;
+
     public Viewport viewport;
-    public boolean gameOver;
     private Hud hud;
-    public Jugador player1;
-    public Jugador player2;
+
+    public Jugador[] players = new Jugador[2];
+
     private Arco arcoDer;
     private Arco arcoIzq;
     public Pelota pelota;
+
     private Array<Pared> contorno;
     private World world;
+
     private boolean pause;
     private int gameTime;
     private float timeCounter;
+
     private Sprite background;
+
     private AIRival aiRival;
 
-    public Level(World world, Hud hud)
+    public Level(World world, Hud hud, boolean isSinglePlayer)
     {
         this.world = world;
         this.hud = hud;
@@ -53,18 +65,19 @@ public class Level
         gameTime = Constants.TIEMPO_JUEGO;
         timeCounter = 0;
 
-        background = new Sprite(new Texture(Constants.BACKGROUN_TEXTURE));
+        background = new Sprite(new Texture(Constants.BACKGROUND_TEXTURE));
         background.setSize(Gdx.graphics.getWidth()/PPM, Gdx.graphics.getHeight()/PPM);
         background.setOriginCenter();
 
         viewport = new FitViewport(Gdx.graphics.getWidth()/PPM, Gdx.graphics.getHeight()/PPM);
 
-        player1 = new Jugador(world, Constants.JUGADOR_SPAWN, true);
-        player2 = new Jugador(world, Constants.JUGADOR_SPAWN_2, false);
+        players[0] = new Jugador(world, Constants.JUGADOR_SPAWN, true);
+        players[1] = new Jugador(world, Constants.JUGADOR_SPAWN_2, false);
 
         pelota = new Pelota(world, Constants.PELOTA_SPAWN);
 
-        aiRival = new AIRival(this);
+        if(isSinglePlayer)
+            aiRival = new AIRival(this);
 
         arcoDer = new Arco(world, true, this);
         arcoIzq = new Arco(world, false, this);
@@ -90,6 +103,12 @@ public class Level
                 height/PPM));
     }
 
+    public Level(World world, Hud hud, boolean isSinglePlayer, Socket socket)
+    {
+        this(world, hud, isSinglePlayer);
+        this.socket = socket;
+    }
+
     public void update(float delta)
     {
         timeCounter += delta;
@@ -107,9 +126,14 @@ public class Level
             timeCounter = 0;
         }
 
-        aiRival.update(delta);
-        player1.update(delta);
-        player2.update(delta);
+        handleInput();
+
+        Optional.ofNullable(aiRival)
+                .ifPresent(aiPlayer->aiPlayer.update(delta));
+
+        for(Jugador player: players)
+            player.update(delta);
+
         pelota.update(delta);
         arcoIzq.update(delta);
         arcoDer.update(delta);
@@ -120,6 +144,73 @@ public class Level
         if(Gdx.input.isKeyJustPressed(Input.Keys.P))
         {
             pause = !pause;
+        }
+    }
+
+    private void handleInput()
+    {
+        for(Jugador player: players)
+        {
+            if (Gdx.input.isKeyPressed(player.left))
+            {
+                if(socket != null)
+                {
+                    ActionPacket packet = new ActionPacket(
+                            player.body.getPosition(),
+                            player.body.getLinearVelocity(),
+                            player.foot.getAngle(),
+                            player.foot.getAngularVelocity(),
+                            ActionPacket.Action.LEFT);
+
+                    socket.emit(Events.ACTION.name(), new Json().toJson(packet) );
+                }
+                player.moveLeft();
+            }
+            if (Gdx.input.isKeyPressed(player.right))
+            {
+                if(socket != null)
+                {
+                    ActionPacket packet = new ActionPacket(
+                            player.body.getPosition(),
+                            player.body.getLinearVelocity(),
+                            player.foot.getAngle(),
+                            player.foot.getAngularVelocity(),
+                            ActionPacket.Action.RIGHT);
+
+                    socket.emit(Events.ACTION.name(), new Json().toJson(packet) );
+                }
+                player.moveRight();
+            }
+            if (Gdx.input.isKeyJustPressed(player.up))
+            {
+                if(socket != null)
+                {
+                    ActionPacket packet = new ActionPacket(
+                            player.body.getPosition(),
+                            player.body.getLinearVelocity(),
+                            player.foot.getAngle(),
+                            player.foot.getAngularVelocity(),
+                            ActionPacket.Action.JUMP);
+
+                    socket.emit(Events.ACTION.name(), new Json().toJson(packet) );
+                }
+                player.jump();
+            }
+            if (Gdx.input.isKeyJustPressed(player.kick))
+            {
+                if(socket != null)
+                {
+                    ActionPacket packet = new ActionPacket(
+                                            player.body.getPosition(),
+                                            player.body.getLinearVelocity(),
+                                            player.foot.getAngle(),
+                                            player.foot.getAngularVelocity(),
+                                            ActionPacket.Action.KICK);
+
+                    socket.emit(Events.ACTION.name(), new Json().toJson(packet) );
+                }
+                player.kick();
+            }
         }
     }
 
@@ -135,8 +226,8 @@ public class Level
 
     private void sacarDelMedio()
     {
-        player1.respawn();
-        player2.respawn();
+        for(Jugador player: players)
+            player.respawn();
         pelota.respawn();
     }
 
@@ -148,8 +239,10 @@ public class Level
         batch.begin();
 
         background.draw(batch);
-        player1.render(batch);
-        player2.render(batch);
+
+        for(Jugador player:players)
+            player.render(batch);
+
         pelota.render(batch);
         arcoIzq.render(batch);
         arcoDer.render(batch);

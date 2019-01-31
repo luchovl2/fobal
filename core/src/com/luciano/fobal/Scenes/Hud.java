@@ -11,7 +11,6 @@ import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.luciano.fobal.FobalGame;
-import com.luciano.fobal.utils.Constants;
 
 import java.util.Locale;
 

@@ -1,4 +1,4 @@
-package com.luciano.fobal;
+package com.luciano.fobal.screens;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -6,19 +6,26 @@ import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
 import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.utils.Json;
+import com.luciano.fobal.FobalGame;
+import com.luciano.fobal.Level;
 import com.luciano.fobal.Scenes.Hud;
+import com.luciano.fobal.packets.ActionPacket;
 import com.luciano.fobal.utils.Constants;
+import com.luciano.fobal.utils.Events;
 import com.luciano.fobal.utils.FobalContactListener;
+import io.socket.client.IO;
 import io.socket.client.Socket;
 
-public class FobalScreen extends ScreenAdapter
+import java.net.URISyntaxException;
+
+public class MultiScreen extends ScreenAdapter
 {
-    private SpriteBatch batch;
+    private final SpriteBatch batch;
+    private final FobalGame game;
 
     private World world;
     private Box2DDebugRenderer debugRenderer;
@@ -31,22 +38,49 @@ public class FobalScreen extends ScreenAdapter
 
     private Socket socket;
 
-    public FobalScreen()
-    {}
+    public MultiScreen(FobalGame fobalGame, SpriteBatch batch)
+    {
+        this.game = fobalGame;
+        this.batch = batch;
+    }
 
     @Override
     public void show()
     {
-        batch = new SpriteBatch();
+        try
+        {
+            socket = IO.socket("http://" + Constants.HOST + ":" + Constants.PORT);
+            socket.on(Socket.EVENT_CONNECT, args->{
+                Gdx.app.log("socket", "connected with id: " + socket.id());
+            });
+
+            socket.on(Events.ACTION.name(), args->{
+                String id = (String) args[0];
+
+                if(!id.equals(socket.id()))
+                {
+                    ActionPacket packet = new Json().fromJson(ActionPacket.class,
+                            (String) args[1]);
+
+                    level.players[1].delayedAction = packet;
+                }
+            });
+            Gdx.app.log("socket", "connecting to server");
+            socket.connect();
+        }
+        catch (URISyntaxException e)
+        {
+            e.printStackTrace();
+        }
 
         float width = Gdx.graphics.getWidth();
         float height = Gdx.graphics.getHeight();
 
         hud = new Hud(batch);
 
-        world = new World(new Vector2(0f, -9.8f), false);
-        level = new Level(world, hud);
+        world = new World(Constants.GRAVITY, false);
         debugRenderer = new Box2DDebugRenderer();
+        level = new Level(world, hud, false, socket);
 
         world.setContactListener(new FobalContactListener());
 
@@ -95,10 +129,10 @@ public class FobalScreen extends ScreenAdapter
     public void dispose()
     {
         manager.dispose();
-        batch.dispose();
         debugRenderer.dispose();
         world.dispose();
         hud.dispose();
+        socket.disconnect();
     }
 
     @Override

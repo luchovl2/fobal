@@ -1,6 +1,5 @@
 package com.luciano.fobal.entities;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
@@ -12,6 +11,7 @@ import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.physics.box2d.joints.RevoluteJoint;
 import com.badlogic.gdx.physics.box2d.joints.RevoluteJointDef;
+import com.luciano.fobal.packets.ActionPacket;
 import com.luciano.fobal.utils.CreateBody;
 import com.luciano.fobal.utils.Constants;
 
@@ -22,18 +22,20 @@ public class Jugador
     private Sprite sprite = null;
     private Sprite spritePie = null;
     public Body body;
-    public Body pie;
-    public RevoluteJoint cadera;
+    public Body foot;
+    public RevoluteJoint hip;
     private boolean miraDerecha;
     private float upperAngle;
     private float lowerAngle;
     private boolean saltando;
 
-    private int up;
-    private int left;
-    private int right;
+    public int up;
+    public int left;
+    public int right;
     private int down;
-    private int kick;
+    public int kick;
+
+    public ActionPacket delayedAction;
 
     public Jugador(World world, Vector2 position, boolean miraDer)
     {
@@ -71,29 +73,8 @@ public class Jugador
 
     public void update(float delta)
     {
-        Vector2 velocidad = body.getLinearVelocity();
-
-        if(abs(body.getLinearVelocity().y) > 0.001)
-            saltando = true;
-        else
-            saltando = false;
-
-        if(Gdx.input.isKeyPressed(this.left))
-        {
-            body.setLinearVelocity(-Constants.JUGADOR_VELOCIDAD, velocidad.y);
-        }
-        if(Gdx.input.isKeyPressed(this.right))
-        {
-            body.setLinearVelocity(Constants.JUGADOR_VELOCIDAD, velocidad.y);
-        }
-        if(Gdx.input.isKeyJustPressed(this.up))
-        {
-            saltar();
-        }
-        if(Gdx.input.isKeyJustPressed(this.kick))
-        {
-            patear();
-        }
+        doDelayedAction();
+        saltando = abs(body.getLinearVelocity().y) > 0.001;
 
         float flip = 1;
         if(!miraDerecha)
@@ -102,19 +83,52 @@ public class Jugador
             //que si mirara derecha
         }
 
-        if ((flip*cadera.getJointAngle()) >= upperAngle)
+        if ((flip* hip.getJointAngle()) >= upperAngle)
         {
-            cadera.enableMotor(false);
-            cadera.setMotorSpeed(0);
+            hip.enableMotor(false);
+            hip.setMotorSpeed(0);
         }
-        else if ((flip*cadera.getJointAngle()) <= lowerAngle)
+        else if ((flip* hip.getJointAngle()) <= lowerAngle)
         {
-            cadera.enableMotor(true);
-            //cadera.setMotorSpeed(0);
+            hip.enableMotor(true);
+            //hip.setMotorSpeed(0);
         }
     }
 
-    private void saltar()
+    private void doDelayedAction()
+    {
+        if(delayedAction == null)
+        {
+
+        }
+        else if(delayedAction.getAction() == ActionPacket.Action.KICK)
+        {
+//            body.setTransform(delayedAction.getPlayerPos(), 0);
+//            body.setLinearVelocity(delayedAction.getPlayerVel());
+            kick();
+        }
+        else if(delayedAction.getAction() == ActionPacket.Action.JUMP)
+        {
+//            body.setTransform(delayedAction.getPlayerPos(), 0);
+//            body.setLinearVelocity(delayedAction.getPlayerVel());
+            jump();
+        }
+        else if(delayedAction.getAction() == ActionPacket.Action.LEFT)
+        {
+//            body.setTransform(delayedAction.getPlayerPos(), 0);
+//            body.setLinearVelocity(delayedAction.getPlayerVel());
+            moveLeft();
+        }
+        else if(delayedAction.getAction() == ActionPacket.Action.RIGHT)
+        {
+//            body.setTransform(delayedAction.getPlayerPos(), 0);
+//            body.setLinearVelocity(delayedAction.getPlayerVel());
+            moveRight();
+        }
+        delayedAction = null;   //una vez realizada, eliminarla (garbage-collector-earla)
+    }
+
+    public void jump()
     {
         Vector2 velocidad = body.getLinearVelocity();
 
@@ -145,19 +159,19 @@ public class Jugador
             body.setLinearVelocity(Constants.JUGADOR_VELOCIDAD, velocidad.y);
     }
 
-    public void patear()
+    public void kick()
     {
-        cadera.enableMotor(true);
+        hip.enableMotor(true);
 
         if(miraDerecha)
-            cadera.setMotorSpeed(40f);
+            hip.setMotorSpeed(40f);
         else
-            cadera.setMotorSpeed(-40f);
+            hip.setMotorSpeed(-40f);
     }
 
     public void cabecear()
     {
-        saltar();
+        jump();
     }
 
     public void respawn()
@@ -165,13 +179,13 @@ public class Jugador
         if(miraDerecha)
         {
             body.setTransform(Constants.JUGADOR_SPAWN, 0);
-            pie.setTransform(Constants.JUGADOR_SPAWN.x,
+            foot.setTransform(Constants.JUGADOR_SPAWN.x,
                     Constants.JUGADOR_SPAWN.y + Constants.JUGADOR_PIE_Y, 0);
         }
         else
         {
             body.setTransform(Constants.JUGADOR_SPAWN_2, 0);
-            pie.setTransform(Constants.JUGADOR_SPAWN_2.x,
+            foot.setTransform(Constants.JUGADOR_SPAWN_2.x,
                     Constants.JUGADOR_SPAWN_2.y + Constants.JUGADOR_PIE_Y, 0);
         }
     }
@@ -186,8 +200,8 @@ public class Jugador
 
             if(spritePie != null)
             {
-                spritePie.setCenter(pie.getPosition().x, pie.getPosition().y);
-                spritePie.setRotation(pie.getAngle()*180f/MathUtils.PI);
+                spritePie.setCenter(foot.getPosition().x, foot.getPosition().y);
+                spritePie.setRotation(foot.getAngle()*180f/MathUtils.PI);
                 spritePie.draw(batch);
             }
         }
@@ -224,21 +238,21 @@ public class Jugador
                 (-1)*sentido*Constants.JUGADOR_PIE_WIDTH/2, -Constants.JUGADOR_PIE_HEIGHT/4};
         cunia.set(vertices);
 
-        pie = CreateBody.createBody(world,
+        foot = CreateBody.createBody(world,
                 position.x,
                 position.y + Constants.JUGADOR_PIE_Y,
                 cunia,
                 1f,
                 false);
 
-        pie.getFixtureList().get(0).setDensity(Constants.JUGADOR_PIE_DENSIDAD);
+        foot.getFixtureList().get(0).setDensity(Constants.JUGADOR_PIE_DENSIDAD);
         cunia.dispose();
 
         lowerAngle = -0.3f;
         upperAngle = MathUtils.PI/2;
 
         RevoluteJointDef jointDef = new RevoluteJointDef();
-        jointDef.initialize(body, pie, body.getWorldCenter());
+        jointDef.initialize(body, foot, body.getWorldCenter());
         jointDef.enableLimit = true;
         jointDef.maxMotorTorque = 30f;
         jointDef.upperAngle = upperAngle;
@@ -249,6 +263,16 @@ public class Jugador
             jointDef.lowerAngle = -upperAngle;
         }
 
-        cadera = (RevoluteJoint)world.createJoint(jointDef);
+        hip = (RevoluteJoint)world.createJoint(jointDef);
+    }
+
+    public void moveLeft()
+    {
+        body.setLinearVelocity(-Constants.JUGADOR_VELOCIDAD, body.getLinearVelocity().y);
+    }
+
+    public void moveRight()
+    {
+        body.setLinearVelocity(Constants.JUGADOR_VELOCIDAD, body.getLinearVelocity().y);
     }
 }

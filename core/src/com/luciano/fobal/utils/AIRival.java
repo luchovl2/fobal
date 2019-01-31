@@ -7,7 +7,7 @@ import com.luciano.fobal.entities.Pelota;
 public class AIRival
 {
     private Level level;
-    private Jugador player;
+    private Jugador aiPlayer;
     private Jugador rival;
     private Pelota pelota;
 
@@ -18,8 +18,8 @@ public class AIRival
     {
         this.level = level;
 
-        player = level.player1;
-        rival = level.player2;
+        aiPlayer = level.players[0];
+        rival = level.players[1];
         pelota = level.pelota;
 
         currentState = State.BUSCAR;
@@ -29,30 +29,30 @@ public class AIRival
     {
         if(isBallInShootRange())
         {
-           player.patear();
+           aiPlayer.kick();
         }
         else if(isBallInHeadRange())
         {
-            player.cabecear();
+            aiPlayer.cabecear();
         }
         else if(isBallCloserToMe() && isBallInFront())
         {
-            player.avanzar();
+            aiPlayer.avanzar();
         }
         else if(!underTheGoal())
         {
-            player.retroceder();
+            aiPlayer.retroceder();
         }
     }
 
     private boolean isBallInFront()
     {
-        return player.body.getPosition().x < pelota.body.getPosition().x;
+        return aiPlayer.body.getPosition().x < pelota.body.getPosition().x;
     }
 
     private boolean underTheGoal()
     {
-        if(player.body.getPosition().x <= Constants.ARCO_IZQUIERDO_POS.x+Constants.ARCO_WIDTH)
+        if(aiPlayer.body.getPosition().x <= Constants.ARCO_IZQUIERDO_POS.x+Constants.ARCO_WIDTH)
         {
             return true;
         }
@@ -61,7 +61,7 @@ public class AIRival
 
     private boolean isBallCloserToMe()
     {
-        if(player.body.getPosition().dst(pelota.body.getPosition()) <
+        if(aiPlayer.body.getPosition().dst(pelota.body.getPosition()) <
                 rival.body.getPosition().dst(pelota.body.getPosition()))
         {
             return true;
@@ -72,7 +72,7 @@ public class AIRival
 
     private boolean isBallInShootRange()
     {
-        if(player.body.getPosition().dst(pelota.body.getPosition()) < 0.46f)
+        if(aiPlayer.body.getPosition().dst(pelota.body.getPosition()) < 0.46f)
         {
             return true;
         }
@@ -81,7 +81,7 @@ public class AIRival
 
     private boolean isBallInHeadRange()
     {
-        if(player.body.getPosition().dst(pelota.body.getPosition()) < 1.0f)
+        if(aiPlayer.body.getPosition().dst(pelota.body.getPosition()) < 1.0f)
         {
             if(pelota.body.getPosition().y > 0.8f)
                 return true;
