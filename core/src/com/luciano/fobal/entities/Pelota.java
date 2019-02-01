@@ -7,6 +7,8 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.physics.box2d.joints.MotorJoint;
+import com.badlogic.gdx.physics.box2d.joints.MotorJointDef;
 import com.luciano.fobal.utils.CreateBody;
 import com.luciano.fobal.utils.Constants;
 
@@ -46,8 +48,8 @@ public class Pelota
 
     public void respawn()
     {
-
         body.setLinearVelocity(5f*(random.nextFloat()-0.5f), 0);
+//        body.setLinearVelocity(0, 0);
         body.setAngularVelocity(0);
         body.setTransform(Constants.PELOTA_SPAWN, 0);
     }

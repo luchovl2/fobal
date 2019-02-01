@@ -35,6 +35,8 @@ public class Jugador
     private int down;
     public int kick;
 
+    public boolean remote = false;
+
     public ActionPacket delayedAction;
 
     public Jugador(World world, Vector2 position, boolean miraDer)

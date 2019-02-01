@@ -45,10 +45,10 @@ public class FobalGame extends Game
         setScreen(screen);
     }
 
-    public void setMultiPlayerScreen()
+    public void setMultiPlayerScreen(String serverIp)
     {
         screen.dispose();
-        screen = new MultiScreen(this, batch);
+        screen = new MultiScreen(this, batch, serverIp);
         setScreen(screen);
     }
 

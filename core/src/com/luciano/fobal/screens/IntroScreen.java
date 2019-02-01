@@ -5,7 +5,6 @@ import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.physics.box2d.joints.FrictionJoint;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -18,12 +17,9 @@ import com.luciano.fobal.utils.Constants;
 
 public class IntroScreen extends ScreenAdapter
 {
-    private Stage stage;
+    private final Stage stage;
     private final SpriteBatch batch;
     private final FobalGame game;
-
-    public TextButton singleButton;
-    public TextButton multiButton;
 
     public IntroScreen(FobalGame fobalGame, SpriteBatch batch)
     {
@@ -41,7 +37,7 @@ public class IntroScreen extends ScreenAdapter
         table.add(titleLable).expandX().padTop(20);
         table.row();
 
-        singleButton = new TextButton("Single player", skin);
+        TextButton singleButton = new TextButton("Single player", skin);
         singleButton.addListener(new ClickListener(){
             @Override
             public void clicked(InputEvent event, float x, float y)
@@ -51,7 +47,7 @@ public class IntroScreen extends ScreenAdapter
         });
         table.add(singleButton).padTop(20).row();
 
-        multiButton = new TextButton("Multiplayer", skin);
+        TextButton multiButton = new TextButton("Multiplayer", skin);
         multiButton.addListener(new ClickListener(){
             @Override
             public void clicked(InputEvent event, float x, float y)

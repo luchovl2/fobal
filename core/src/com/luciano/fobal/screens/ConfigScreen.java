@@ -20,6 +20,7 @@ public class ConfigScreen extends ScreenAdapter
     private final Stage stage;
 
     public TextButton multiButton;
+    private final Label messageLabel;
 
     public ConfigScreen(FobalGame game, SpriteBatch batch)
     {
@@ -30,33 +31,41 @@ public class ConfigScreen extends ScreenAdapter
 
         stage = new Stage();
         final Table table = new Table();
-        table.setDebug(true);
+//        table.setDebug(true);
         table.setFillParent(true);
         table.top();
 
         Label titleLable = new Label("Fobal", skin, "title", Color.FIREBRICK);
-        table.add(titleLable).expandX().padTop(20);
+        table.add(titleLable).expandX().padTop(20).colspan(2);
         table.row();
 
-        Label serverIpLabel = new Label("Ingrese IP de servidor", skin);
-        table.add(serverIpLabel).expandX().padTop(20);
+        Label serverIpLabel = new Label("IP y puerto de servidor:", skin);
+        table.add(serverIpLabel).uniform().right().padTop(60);
 
-        TextField serverIp = new TextField("", skin);
-        serverIp.setMaxLength(32);
-        table.add(serverIp).expandX().padTop(20);
+        TextField serverIp = new TextField(Constants.HOST+":"+Constants.PORT, skin);
+        serverIp.setMaxLength(28);
+        table.add(serverIp).uniform().fillX().padTop(60).padRight(10).spaceLeft(10);
         table.row();
 
-        multiButton = new TextButton("Multiplayer", skin);
+        multiButton = new TextButton("Let's play", skin);
+        table.add(multiButton).padTop(60).colspan(2).padTop(50);
+
+        messageLabel = new Label("waiting for player...", skin);
+        messageLabel.setVisible(false);
+        table.row();
+        table.add(messageLabel).colspan(2);
+
+        stage.addActor(table);
+
         multiButton.addListener(new ClickListener(){
             @Override
             public void clicked(InputEvent event, float x, float y)
             {
-                game.setMultiPlayerScreen();
+                messageLabel.setVisible(true);
+                render(0);
+                game.setMultiPlayerScreen("http://"+serverIp.getText());
             }
         });
-        table.add(multiButton).padTop(20);
-
-        stage.addActor(table);
 
         Gdx.input.setInputProcessor(stage);
     }

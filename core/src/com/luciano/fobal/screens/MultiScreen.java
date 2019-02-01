@@ -14,9 +14,11 @@ import com.luciano.fobal.FobalGame;
 import com.luciano.fobal.Level;
 import com.luciano.fobal.Scenes.Hud;
 import com.luciano.fobal.packets.ActionPacket;
+import com.luciano.fobal.packets.BeginPacket;
 import com.luciano.fobal.utils.Constants;
 import com.luciano.fobal.utils.Events;
 import com.luciano.fobal.utils.FobalContactListener;
+import com.luciano.fobal.utils.GameMode;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 
@@ -33,15 +35,23 @@ public class MultiScreen extends ScreenAdapter
     private Level level;
     private Hud hud;
 
-    public AssetManager manager;
+    private AssetManager manager;
     private Music music;
 
     private Socket socket;
+    private String serverIp;
 
-    public MultiScreen(FobalGame fobalGame, SpriteBatch batch)
+    private int remotePlayer;
+
+    private boolean isPaused = true;
+
+    public MultiScreen(FobalGame fobalGame, SpriteBatch batch, String serverIp)
     {
         this.game = fobalGame;
         this.batch = batch;
+        this.serverIp = serverIp;
+
+        remotePlayer = 0;
     }
 
     @Override
@@ -49,9 +59,24 @@ public class MultiScreen extends ScreenAdapter
     {
         try
         {
-            socket = IO.socket("http://" + Constants.HOST + ":" + Constants.PORT);
+            socket = IO.socket(serverIp);
             socket.on(Socket.EVENT_CONNECT, args->{
                 Gdx.app.log("socket", "connected with id: " + socket.id());
+            });
+
+            socket.on(Events.MY_PLAYER.name(), args -> {
+                //el servidor envía qué player asigna a este cliente (índice del array)
+
+                //puede tirar format exception
+                //puede estar fuera de rango (0 o 1, porque son dos players)
+//                int index = Integer.valueOf((String)args[0]);
+                int index = (int) args[0];
+                if(0 <= index && index < 2)
+                {
+                    Gdx.app.log("socket", "I have player number " + index);
+                    remotePlayer = (index + 1) % 2; //si soy 1, el es 0 y viceversa
+                    level.players[remotePlayer].remote = true;
+                }
             });
 
             socket.on(Events.ACTION.name(), args->{
@@ -62,9 +87,15 @@ public class MultiScreen extends ScreenAdapter
                     ActionPacket packet = new Json().fromJson(ActionPacket.class,
                             (String) args[1]);
 
-                    level.players[1].delayedAction = packet;
+                    level.players[remotePlayer].delayedAction = packet;
                 }
             });
+
+            socket.on(Events.BEGIN.name(), args -> {
+                BeginPacket packet = new Json().fromJson(BeginPacket.class, (String) args[0]);
+                beginGame(packet);
+            });
+
             Gdx.app.log("socket", "connecting to server");
             socket.connect();
         }
@@ -73,14 +104,11 @@ public class MultiScreen extends ScreenAdapter
             e.printStackTrace();
         }
 
-        float width = Gdx.graphics.getWidth();
-        float height = Gdx.graphics.getHeight();
-
         hud = new Hud(batch);
 
         world = new World(Constants.GRAVITY, false);
         debugRenderer = new Box2DDebugRenderer();
-        level = new Level(world, hud, false, socket);
+        level = new Level(world, hud, GameMode.MULTI_PLAYER, socket);
 
         world.setContactListener(new FobalContactListener());
 
@@ -90,33 +118,45 @@ public class MultiScreen extends ScreenAdapter
 
         music = manager.get("audio/circus_theme.mp3", Music.class);
         music.setLooping(true);
-        music.play();
+//        music.play();
         music.setVolume(0.02f);
+    }
+
+    private void beginGame(BeginPacket packet)
+    {
+        //pelota, players
+//        level.pelota.body.setTransform(packet.getBallPos(), 0);
+
+        music.play();
+        isPaused = false;
     }
 
     @Override
     public void render(float delta)
     {
-        world.step(1/60f, 6, 2);
+        if(!isPaused)
+        {
+            world.step(1 / 60f, 6, 2);
 
-        level.update(delta);
-        hud.update(delta);
+            level.update(delta);
+            hud.update(delta);
 
-        Gdx.gl.glClearColor(
-                Constants.BACKGROUND_COLOR.r,
-                Constants.BACKGROUND_COLOR.g,
-                Constants.BACKGROUND_COLOR.b,
-                Constants.BACKGROUND_COLOR.a);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+            Gdx.gl.glClearColor(
+                    Constants.BACKGROUND_COLOR.r,
+                    Constants.BACKGROUND_COLOR.g,
+                    Constants.BACKGROUND_COLOR.b,
+                    Constants.BACKGROUND_COLOR.a);
+            Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        level.render(batch);
+            debugRenderer.render(world, level.viewport.getCamera().combined);
 
-        batch.setProjectionMatrix(hud.stage.getCamera().combined);
-        hud.stage.draw();
+            level.render(batch);
 
-        //debugRenderer.render(world, level.viewport.getCamera().combined);
+            batch.setProjectionMatrix(hud.stage.getCamera().combined);
+            hud.stage.draw();
 
-        if(Gdx.input.isKeyJustPressed(Input.Keys.M))
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.M))
         {
             if (music.isPlaying())
                 music.pause();

@@ -20,6 +20,7 @@ import com.luciano.fobal.packets.ActionPacket;
 import com.luciano.fobal.utils.AIRival;
 import com.luciano.fobal.utils.Constants;
 import com.luciano.fobal.utils.Events;
+import com.luciano.fobal.utils.GameMode;
 import io.socket.client.Socket;
 
 import java.util.Optional;
@@ -30,8 +31,6 @@ public class Level
 {
     private Socket socket;
 
-    private int score1, score2;
-    private boolean gameOver;
 
     public Viewport viewport;
     private Hud hud;
@@ -45,6 +44,8 @@ public class Level
     private Array<Pared> contorno;
     private World world;
 
+    private int score1, score2;
+    private boolean gameOver;
     private boolean pause;
     private int gameTime;
     private float timeCounter;
@@ -53,7 +54,7 @@ public class Level
 
     private AIRival aiRival;
 
-    public Level(World world, Hud hud, boolean isSinglePlayer)
+    public Level(World world, Hud hud, GameMode gameMode)
     {
         this.world = world;
         this.hud = hud;
@@ -76,13 +77,13 @@ public class Level
 
         pelota = new Pelota(world, Constants.PELOTA_SPAWN);
 
-        if(isSinglePlayer)
+        if(gameMode == GameMode.SINGLE_PLAYER)
             aiRival = new AIRival(this);
 
         arcoDer = new Arco(world, true, this);
         arcoIzq = new Arco(world, false, this);
 
-        contorno = new Array<Pared>(4);
+        contorno = new Array<>(4);
         float width = Gdx.graphics.getWidth();
         float height = Gdx.graphics.getHeight();
         contorno.add(new Pared(world,
@@ -103,9 +104,9 @@ public class Level
                 height/PPM));
     }
 
-    public Level(World world, Hud hud, boolean isSinglePlayer, Socket socket)
+    public Level(World world, Hud hud, GameMode gameMode, Socket socket)
     {
-        this(world, hud, isSinglePlayer);
+        this(world, hud, gameMode);
         this.socket = socket;
     }
 
@@ -151,65 +152,51 @@ public class Level
     {
         for(Jugador player: players)
         {
-            if (Gdx.input.isKeyPressed(player.left))
+            if(!player.remote)
             {
-                if(socket != null)
-                {
-                    ActionPacket packet = new ActionPacket(
-                            player.body.getPosition(),
-                            player.body.getLinearVelocity(),
-                            player.foot.getAngle(),
-                            player.foot.getAngularVelocity(),
-                            ActionPacket.Action.LEFT);
+                ActionPacket packet = new ActionPacket(
+                        player.body.getPosition(),
+                        player.body.getLinearVelocity(),
+                        player.foot.getAngle(),
+                        player.foot.getAngularVelocity(),
+                        null);
 
-                    socket.emit(Events.ACTION.name(), new Json().toJson(packet) );
-                }
-                player.moveLeft();
-            }
-            if (Gdx.input.isKeyPressed(player.right))
-            {
-                if(socket != null)
+                if (Gdx.input.isKeyPressed(player.left))
                 {
-                    ActionPacket packet = new ActionPacket(
-                            player.body.getPosition(),
-                            player.body.getLinearVelocity(),
-                            player.foot.getAngle(),
-                            player.foot.getAngularVelocity(),
-                            ActionPacket.Action.RIGHT);
-
-                    socket.emit(Events.ACTION.name(), new Json().toJson(packet) );
+                    if (socket != null)
+                    {
+                        packet.setAction(ActionPacket.Action.LEFT);
+                        socket.emit(Events.ACTION.name(), new Json().toJson(packet));
+                    }
+                    player.moveLeft();
                 }
-                player.moveRight();
-            }
-            if (Gdx.input.isKeyJustPressed(player.up))
-            {
-                if(socket != null)
+                if (Gdx.input.isKeyPressed(player.right))
                 {
-                    ActionPacket packet = new ActionPacket(
-                            player.body.getPosition(),
-                            player.body.getLinearVelocity(),
-                            player.foot.getAngle(),
-                            player.foot.getAngularVelocity(),
-                            ActionPacket.Action.JUMP);
-
-                    socket.emit(Events.ACTION.name(), new Json().toJson(packet) );
+                    if (socket != null)
+                    {
+                        packet.setAction(ActionPacket.Action.RIGHT);
+                        socket.emit(Events.ACTION.name(), new Json().toJson(packet));
+                    }
+                    player.moveRight();
                 }
-                player.jump();
-            }
-            if (Gdx.input.isKeyJustPressed(player.kick))
-            {
-                if(socket != null)
+                if (Gdx.input.isKeyJustPressed(player.up))
                 {
-                    ActionPacket packet = new ActionPacket(
-                                            player.body.getPosition(),
-                                            player.body.getLinearVelocity(),
-                                            player.foot.getAngle(),
-                                            player.foot.getAngularVelocity(),
-                                            ActionPacket.Action.KICK);
-
-                    socket.emit(Events.ACTION.name(), new Json().toJson(packet) );
+                    if (socket != null)
+                    {
+                        packet.setAction(ActionPacket.Action.JUMP);
+                        socket.emit(Events.ACTION.name(), new Json().toJson(packet));
+                    }
+                    player.jump();
                 }
-                player.kick();
+                if (Gdx.input.isKeyJustPressed(player.kick))
+                {
+                    if (socket != null)
+                    {
+                        packet.setAction(ActionPacket.Action.KICK);
+                        socket.emit(Events.ACTION.name(), new Json().toJson(packet));
+                    }
+                    player.kick();
+                }
             }
         }
     }

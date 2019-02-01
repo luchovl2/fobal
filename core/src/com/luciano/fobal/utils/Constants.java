@@ -3,8 +3,10 @@ package com.luciano.fobal.utils;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector2;
 
-public class Constants
+public final class Constants
 {
+    private Constants(){}
+
     public static final float PPM = 100;
 
     public static final Vector2 GRAVITY = new Vector2(0f, -9.8f);

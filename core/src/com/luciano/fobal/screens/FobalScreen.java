@@ -14,6 +14,7 @@ import com.luciano.fobal.Level;
 import com.luciano.fobal.Scenes.Hud;
 import com.luciano.fobal.utils.Constants;
 import com.luciano.fobal.utils.FobalContactListener;
+import com.luciano.fobal.utils.GameMode;
 
 public class FobalScreen extends ScreenAdapter
 {
@@ -46,7 +47,7 @@ public class FobalScreen extends ScreenAdapter
 
         world = new World(Constants.GRAVITY, false);
         debugRenderer = new Box2DDebugRenderer();
-        level = new Level(world, hud, true);
+        level = new Level(world, hud, GameMode.SINGLE_PLAYER);
 
         world.setContactListener(new FobalContactListener());
 
@@ -80,7 +81,7 @@ public class FobalScreen extends ScreenAdapter
         batch.setProjectionMatrix(hud.stage.getCamera().combined);
         hud.stage.draw();
 
-        //debugRenderer.render(world, level.viewport.getCamera().combined);
+//        debugRenderer.render(world, level.viewport.getCamera().combined);
 
         if(Gdx.input.isKeyJustPressed(Input.Keys.M))
         {
