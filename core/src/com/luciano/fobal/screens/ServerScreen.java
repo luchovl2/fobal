@@ -7,8 +7,11 @@ import com.badlogic.gdx.utils.Json;
 import com.corundumstudio.socketio.Configuration;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.luciano.fobal.levels.ServerLevel;
+import com.luciano.fobal.packets.InputPacket;
 import com.luciano.fobal.utils.Constants;
 import com.luciano.fobal.utils.Events;
+import com.luciano.fobal.utils.FobalContactListener;
+import com.luciano.fobal.utils.FobalInput;
 
 import java.util.*;
 
@@ -48,6 +51,8 @@ public class ServerScreen extends ScreenAdapter
     {
         world = new World(Constants.GRAVITY, true);
         level = new ServerLevel(world);
+
+        world.setContactListener(new FobalContactListener());
 
         indexesAvailable.add(0);
         indexesAvailable.add(1);
@@ -96,6 +101,16 @@ public class ServerScreen extends ScreenAdapter
                 }
         });
 
+        serverSocket.addEventListener(Events.INPUT.name(), String.class,
+                ((client, data, ackSender) -> {
+                    if(players.containsKey(client.getSessionId().toString()))
+                    {
+                        int index = players.get(client.getSessionId().toString());
+                        InputPacket packet = new Json().fromJson(InputPacket.class, data);
+                        level.inputs[index] = packet.getInput();
+                    }
+                }));
+
 //        serverSocket.addEventListener(Events.ACTION.name(), String.class,
 //                (client, data, ackSender) -> {
 //                    Gdx.app.log("server", "action event with data: " + data);
@@ -129,7 +144,7 @@ public class ServerScreen extends ScreenAdapter
 
             currentFrame++;
 
-            if((currentFrame - lastFrameSended) == 6)
+            if((currentFrame - lastFrameSended) == 5)
             {
                 lastFrameSended = currentFrame;
 
@@ -144,5 +159,6 @@ public class ServerScreen extends ScreenAdapter
     public void dispose()
     {
         world.dispose();
+        serverSocket.stop();
     }
 }

@@ -16,11 +16,11 @@ import static com.luciano.fobal.utils.Constants.PPM;
 
 public class ServerLevel
 {
-    public Jugador[] players = new Jugador[2];
+    private Jugador[] players = new Jugador[2];
 
     private Arco arcoDer;
     private Arco arcoIzq;
-    public Pelota pelota;
+    private Pelota pelota;
 
     private Array<Pared> contorno;
     private World world;
@@ -92,6 +92,17 @@ public class ServerLevel
             timeCounter = 0;
         }
 
+        if (arcoDer.hayPelota())
+        {
+            arcoDer.pelotaAfuera();
+            gol(true);
+        }
+        if (arcoIzq.hayPelota())
+        {
+            arcoIzq.pelotaAfuera();
+            gol(false);
+        }
+
         handleInput();
 
         for(Jugador player: players)
@@ -100,7 +111,6 @@ public class ServerLevel
         pelota.update(delta);
         arcoIzq.update(delta);
         arcoDer.update(delta);
-
     }
 
     private void handleInput()
@@ -126,6 +136,7 @@ public class ServerLevel
                 default:
                     break;
             }
+            inputs[i] = FobalInput.NONE;
         }
     }
 
@@ -134,14 +145,20 @@ public class ServerLevel
         return new GameStatePacket(
                 players[0].body.getPosition(),
                 players[0].body.getLinearVelocity(),
+                players[0].foot.getPosition(),
+                players[0].foot.getAngle(),
                 players[1].body.getPosition(),
                 players[1].body.getLinearVelocity(),
+                players[1].foot.getPosition(),
+                players[1].foot.getAngle(),
                 pelota.body.getPosition(),
                 pelota.body.getLinearVelocity(),
-                pelota.body.getAngularVelocity());
+                pelota.body.getAngularVelocity(),
+                score1,
+                score2);
     }
 
-    public void gol(boolean arcoDerecho)
+    private void gol(boolean arcoDerecho)
     {
         if(arcoDerecho)
             score1++;

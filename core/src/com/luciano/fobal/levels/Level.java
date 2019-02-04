@@ -8,7 +8,6 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.luciano.fobal.Scenes.Hud;
@@ -16,13 +15,11 @@ import com.luciano.fobal.entities.Arco;
 import com.luciano.fobal.entities.Jugador;
 import com.luciano.fobal.entities.Pared;
 import com.luciano.fobal.entities.Pelota;
-import com.luciano.fobal.packets.ActionPacket;
 import com.luciano.fobal.packets.GameStatePacket;
 import com.luciano.fobal.utils.AIRival;
 import com.luciano.fobal.utils.Constants;
-import com.luciano.fobal.utils.Events;
+import com.luciano.fobal.utils.FobalInput;
 import com.luciano.fobal.utils.GameMode;
-import io.socket.client.Socket;
 
 import java.util.Optional;
 
@@ -30,8 +27,6 @@ import static com.luciano.fobal.utils.Constants.PPM;
 
 public class Level
 {
-    private Socket socket;
-
     public Viewport viewport;
     private Hud hud;
 
@@ -53,11 +48,16 @@ public class Level
     private Sprite background;
 
     private AIRival aiRival;
+    private GameMode gameMode;
+
+    private GameStatePacket delayedState; //se carga asincrónicamente, se aplica sincrónicamente
+    public FobalInput currentInput;
 
     public Level(World world, Hud hud, GameMode gameMode)
     {
         this.world = world;
         this.hud = hud;
+        this.gameMode = gameMode;
 
         pause = false;
         score1 = 0;
@@ -104,17 +104,13 @@ public class Level
                 height/PPM));
     }
 
-    public Level(World world, Hud hud, GameMode gameMode, Socket socket)
-    {
-        this(world, hud, gameMode);
-        this.socket = socket;
-    }
-
     public void update(float delta)
     {
+        Optional.ofNullable(delayedState).ifPresent(this::applyState);
+
         timeCounter += delta;
 
-        if(timeCounter >= 1f)
+        if(timeCounter >= 1f) //si pasó un segundo actualizar la cuenta regresiva
         {
             if(--gameTime < 0)
             {
@@ -127,15 +123,18 @@ public class Level
             timeCounter = 0;
         }
 
-        if(arcoDer.hayPelota())
+        if(gameMode == GameMode.SINGLE_PLAYER)
         {
-            arcoDer.pelotaAfuera();
-            gol(true);
-        }
-        if(arcoIzq.hayPelota())
-        {
-            arcoIzq.pelotaAfuera();
-            gol(false);
+            if (arcoDer.hayPelota())
+            {
+                arcoDer.pelotaAfuera();
+                gol(true);
+            }
+            if (arcoIzq.hayPelota())
+            {
+                arcoIzq.pelotaAfuera();
+                gol(false);
+            }
         }
 
         handleInput();
@@ -165,43 +164,33 @@ public class Level
         {
             if(!player.remote)
             {
-                ActionPacket packet = new ActionPacket(
-                        player.body.getPosition(),
-                        player.body.getLinearVelocity(),
-                        player.foot.getAngle(),
-                        player.foot.getAngularVelocity(),
-                        null);
+                currentInput = null;
 
                 if (Gdx.input.isKeyPressed(player.left))
                 {
-                    packet.setAction(ActionPacket.Action.LEFT);
+                    currentInput = FobalInput.LEFT;
                     player.moveLeft();
                 }
                 if (Gdx.input.isKeyPressed(player.right))
                 {
-                    packet.setAction(ActionPacket.Action.RIGHT);
+                    currentInput = FobalInput.RIGHT;
                     player.moveRight();
                 }
                 if (Gdx.input.isKeyJustPressed(player.up))
                 {
-                    packet.setAction(ActionPacket.Action.JUMP);
+                    currentInput = FobalInput.UP;
                     player.jump();
                 }
                 if (Gdx.input.isKeyJustPressed(player.kick))
                 {
-                    packet.setAction(ActionPacket.Action.KICK);
+                    currentInput = FobalInput.KICK;
                     player.kick();
-                }
-
-                if(socket != null && packet.getAction() != null)
-                {
-                    socket.emit(Events.ACTION.name(), new Json().toJson(packet));
                 }
             }
         }
     }
 
-    public void gol(boolean arcoDerecho)
+    private void gol(boolean arcoDerecho)
     {
         if(arcoDerecho)
             score1++;
@@ -242,16 +231,28 @@ public class Level
         batch.end();
     }
 
-    public void applyState(GameStatePacket packet)
+    private void applyState(GameStatePacket newState)
     {
-        players[0].body.setTransform(packet.getP1Pos(), 0);
-        players[0].body.setLinearVelocity(packet.getP1Vel());
-        players[1].body.setTransform(packet.getP2Pos(), 0);
-        players[1].body.setLinearVelocity(packet.getP2Vel());
+        players[0].body.setTransform(newState.getP1Pos(), 0);
+        players[0].body.setLinearVelocity(newState.getP1Vel());
+        players[0].foot.setTransform(newState.getP1FootPos(), newState.getP1FootAng());
+        players[1].body.setTransform(newState.getP2Pos(), 0);
+        players[1].body.setLinearVelocity(newState.getP2Vel());
+        players[1].foot.setTransform(newState.getP2FootPos(), newState.getP2FootAng());
 
-        pelota.body.setTransform(packet.getBallPos(),
-                pelota.body.getAngle());
-        pelota.body.setLinearVelocity(packet.getBallVel());
-        pelota.body.setAngularVelocity(packet.getBallAngVel());
+        pelota.body.setTransform(newState.getBallPos(),
+                                pelota.body.getAngle());
+        pelota.body.setLinearVelocity(newState.getBallVel());
+        pelota.body.setAngularVelocity(newState.getBallAngVel());
+
+        score1 = newState.getScore1();
+        score2 = newState.getScore2();
+
+        delayedState = null;
+    }
+
+    public void applyDelayedState(GameStatePacket newState)
+    {
+        delayedState = newState;
     }
 }

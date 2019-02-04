@@ -14,8 +14,8 @@ import com.luciano.fobal.FobalGame;
 import com.luciano.fobal.levels.Level;
 import com.luciano.fobal.Scenes.Hud;
 import com.luciano.fobal.packets.ActionPacket;
-import com.luciano.fobal.packets.BeginPacket;
 import com.luciano.fobal.packets.GameStatePacket;
+import com.luciano.fobal.packets.InputPacket;
 import com.luciano.fobal.utils.Constants;
 import com.luciano.fobal.utils.Events;
 import com.luciano.fobal.utils.FobalContactListener;
@@ -45,6 +45,8 @@ public class MultiScreen extends ScreenAdapter
     private int remotePlayer;
 
     private boolean isPaused = true;
+    private int currentFrame = 0;
+    private int lastFrameSended = 0;
 
     public MultiScreen(FobalGame fobalGame, SpriteBatch batch, String serverIp)
     {
@@ -70,7 +72,7 @@ public class MultiScreen extends ScreenAdapter
 
                 //puede tirar format exception
                 //puede estar fuera de rango (0 o 1, porque son dos players)
-//                int index = Integer.valueOf((String)args[0]);
+    //                int index = Integer.valueOf((String)args[0]);
                 int index = (int) args[0];
                 if(0 <= index && index < 2)
                 {
@@ -92,16 +94,16 @@ public class MultiScreen extends ScreenAdapter
                 }
             });
 
-//            socket.on(Events.BEGIN.name(), args -> {
+            socket.on(Events.BEGIN.name(), args -> {
 //                BeginPacket packet = new Json().fromJson(BeginPacket.class, (String) args[0]);
-//                beginGame(packet);
-//            });
+                beginGame();
+            });
 
             socket.on(Events.GAME_STATE.name(), args->{
                 GameStatePacket packet = new Json().fromJson(GameStatePacket.class,
                         (String)args[0]);
 
-                level.applyState(packet);
+                level.applyDelayedState(packet);
             });
 
             Gdx.app.log("socket", "connecting to server");
@@ -116,7 +118,7 @@ public class MultiScreen extends ScreenAdapter
 
         world = new World(Constants.GRAVITY, false);
         debugRenderer = new Box2DDebugRenderer();
-        level = new Level(world, hud, GameMode.MULTI_PLAYER, socket);
+        level = new Level(world, hud, GameMode.MULTI_PLAYER);
 
         world.setContactListener(new FobalContactListener());
 
@@ -126,15 +128,11 @@ public class MultiScreen extends ScreenAdapter
 
         music = manager.get("audio/circus_theme.mp3", Music.class);
         music.setLooping(true);
-//        music.play();
         music.setVolume(0.02f);
     }
 
-    private void beginGame(BeginPacket packet)
+    private void beginGame()
     {
-        //pelota, players
-//        level.pelota.body.setTransform(packet.getBallPos(), 0);
-
         music.play();
         isPaused = false;
     }
@@ -147,6 +145,19 @@ public class MultiScreen extends ScreenAdapter
             world.step(1 / 60f, 6, 2);
 
             level.update(delta);
+
+            if (level.currentInput != null && socket != null)
+            {
+                socket.emit(Events.INPUT.name(),
+                        new Json().toJson(new InputPacket(level.currentInput)));
+            }
+//            currentFrame++;
+//            if((currentFrame - lastFrameSended) == 2)
+//            {
+//                lastFrameSended = currentFrame;
+//
+//            }
+
             hud.update(delta);
 
             Gdx.gl.glClearColor(
