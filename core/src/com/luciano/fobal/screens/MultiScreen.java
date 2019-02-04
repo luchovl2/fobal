@@ -11,10 +11,11 @@ import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.utils.Json;
 import com.luciano.fobal.FobalGame;
-import com.luciano.fobal.Level;
+import com.luciano.fobal.levels.Level;
 import com.luciano.fobal.Scenes.Hud;
 import com.luciano.fobal.packets.ActionPacket;
 import com.luciano.fobal.packets.BeginPacket;
+import com.luciano.fobal.packets.GameStatePacket;
 import com.luciano.fobal.utils.Constants;
 import com.luciano.fobal.utils.Events;
 import com.luciano.fobal.utils.FobalContactListener;
@@ -91,9 +92,16 @@ public class MultiScreen extends ScreenAdapter
                 }
             });
 
-            socket.on(Events.BEGIN.name(), args -> {
-                BeginPacket packet = new Json().fromJson(BeginPacket.class, (String) args[0]);
-                beginGame(packet);
+//            socket.on(Events.BEGIN.name(), args -> {
+//                BeginPacket packet = new Json().fromJson(BeginPacket.class, (String) args[0]);
+//                beginGame(packet);
+//            });
+
+            socket.on(Events.GAME_STATE.name(), args->{
+                GameStatePacket packet = new Json().fromJson(GameStatePacket.class,
+                        (String)args[0]);
+
+                level.applyState(packet);
             });
 
             Gdx.app.log("socket", "connecting to server");

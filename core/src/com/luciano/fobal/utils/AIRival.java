@@ -1,6 +1,6 @@
 package com.luciano.fobal.utils;
 
-import com.luciano.fobal.Level;
+import com.luciano.fobal.levels.Level;
 import com.luciano.fobal.entities.Jugador;
 import com.luciano.fobal.entities.Pelota;
 

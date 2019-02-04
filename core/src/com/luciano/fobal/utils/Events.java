@@ -6,5 +6,6 @@ public enum Events
 {
     ACTION,
     MY_PLAYER,
-    BEGIN
+    BEGIN,
+    GAME_STATE;
 }

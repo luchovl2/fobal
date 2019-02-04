@@ -3,12 +3,10 @@ package com.luciano.fobal.entities;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
-import com.luciano.fobal.Level;
 import com.luciano.fobal.utils.CreateBody;
 import com.luciano.fobal.utils.Constants;
 
@@ -16,17 +14,15 @@ import static com.luciano.fobal.utils.Constants.PPM;
 
 public class Arco
 {
-    private Level level;
     private Body body;
     private boolean derecho;
     private Sprite sprite = null;
 
     private boolean pelotaAdentro= false;
 
-    public Arco(World world, boolean derecho, Level level)
+    public Arco(World world, boolean derecho)
     {
         this.derecho = derecho;
-        this.level = level;
 
         crearArco(world);
 
@@ -45,16 +41,13 @@ public class Arco
 
     public void update(float delta)
     {
-        //detectar si la pelota está adentro
-        if(pelotaAdentro)
-        {
-            if(derecho)
-                level.gol(true);
-            else
-                level.gol(false);
-
-            pelotaAfuera(); //baja el flag para no contar de nuevo
-        }
+//        //detectar si la pelota está adentro
+//        if(pelotaAdentro)
+//        {
+//            level.gol(derecho);
+//
+//            pelotaAfuera(); //baja el flag para no contar de nuevo
+//        }
     }
 
     private void crearArco(World world)

@@ -1,4 +1,4 @@
-package com.luciano.fobal;
+package com.luciano.fobal.levels;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -17,6 +17,7 @@ import com.luciano.fobal.entities.Jugador;
 import com.luciano.fobal.entities.Pared;
 import com.luciano.fobal.entities.Pelota;
 import com.luciano.fobal.packets.ActionPacket;
+import com.luciano.fobal.packets.GameStatePacket;
 import com.luciano.fobal.utils.AIRival;
 import com.luciano.fobal.utils.Constants;
 import com.luciano.fobal.utils.Events;
@@ -30,7 +31,6 @@ import static com.luciano.fobal.utils.Constants.PPM;
 public class Level
 {
     private Socket socket;
-
 
     public Viewport viewport;
     private Hud hud;
@@ -80,8 +80,8 @@ public class Level
         if(gameMode == GameMode.SINGLE_PLAYER)
             aiRival = new AIRival(this);
 
-        arcoDer = new Arco(world, true, this);
-        arcoIzq = new Arco(world, false, this);
+        arcoDer = new Arco(world, true);
+        arcoIzq = new Arco(world, false);
 
         contorno = new Array<>(4);
         float width = Gdx.graphics.getWidth();
@@ -127,6 +127,17 @@ public class Level
             timeCounter = 0;
         }
 
+        if(arcoDer.hayPelota())
+        {
+            arcoDer.pelotaAfuera();
+            gol(true);
+        }
+        if(arcoIzq.hayPelota())
+        {
+            arcoIzq.pelotaAfuera();
+            gol(false);
+        }
+
         handleInput();
 
         Optional.ofNullable(aiRival)
@@ -163,39 +174,28 @@ public class Level
 
                 if (Gdx.input.isKeyPressed(player.left))
                 {
-                    if (socket != null)
-                    {
-                        packet.setAction(ActionPacket.Action.LEFT);
-                        socket.emit(Events.ACTION.name(), new Json().toJson(packet));
-                    }
+                    packet.setAction(ActionPacket.Action.LEFT);
                     player.moveLeft();
                 }
                 if (Gdx.input.isKeyPressed(player.right))
                 {
-                    if (socket != null)
-                    {
-                        packet.setAction(ActionPacket.Action.RIGHT);
-                        socket.emit(Events.ACTION.name(), new Json().toJson(packet));
-                    }
+                    packet.setAction(ActionPacket.Action.RIGHT);
                     player.moveRight();
                 }
                 if (Gdx.input.isKeyJustPressed(player.up))
                 {
-                    if (socket != null)
-                    {
-                        packet.setAction(ActionPacket.Action.JUMP);
-                        socket.emit(Events.ACTION.name(), new Json().toJson(packet));
-                    }
+                    packet.setAction(ActionPacket.Action.JUMP);
                     player.jump();
                 }
                 if (Gdx.input.isKeyJustPressed(player.kick))
                 {
-                    if (socket != null)
-                    {
-                        packet.setAction(ActionPacket.Action.KICK);
-                        socket.emit(Events.ACTION.name(), new Json().toJson(packet));
-                    }
+                    packet.setAction(ActionPacket.Action.KICK);
                     player.kick();
+                }
+
+                if(socket != null && packet.getAction() != null)
+                {
+                    socket.emit(Events.ACTION.name(), new Json().toJson(packet));
                 }
             }
         }
@@ -240,5 +240,18 @@ public class Level
         }
 
         batch.end();
+    }
+
+    public void applyState(GameStatePacket packet)
+    {
+        players[0].body.setTransform(packet.getP1Pos(), 0);
+        players[0].body.setLinearVelocity(packet.getP1Vel());
+        players[1].body.setTransform(packet.getP2Pos(), 0);
+        players[1].body.setLinearVelocity(packet.getP2Vel());
+
+        pelota.body.setTransform(packet.getBallPos(),
+                pelota.body.getAngle());
+        pelota.body.setLinearVelocity(packet.getBallVel());
+        pelota.body.setAngularVelocity(packet.getBallAngVel());
     }
 }

@@ -10,7 +10,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
 import com.badlogic.gdx.physics.box2d.World;
 import com.luciano.fobal.FobalGame;
-import com.luciano.fobal.Level;
+import com.luciano.fobal.levels.Level;
 import com.luciano.fobal.Scenes.Hud;
 import com.luciano.fobal.utils.Constants;
 import com.luciano.fobal.utils.FobalContactListener;

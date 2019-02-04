@@ -2,8 +2,11 @@ package com.luciano.fobal.screens;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.ScreenAdapter;
+import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.utils.Json;
 import com.corundumstudio.socketio.Configuration;
 import com.corundumstudio.socketio.SocketIOServer;
+import com.luciano.fobal.levels.ServerLevel;
 import com.luciano.fobal.utils.Constants;
 import com.luciano.fobal.utils.Events;
 
@@ -16,13 +19,36 @@ public class ServerScreen extends ScreenAdapter
     private Map<String, Integer> players = new HashMap<>(2);
     private Queue<Integer> indexesAvailable = new LinkedList<>();
 
+    private World world;
+    private ServerLevel level;
+
+    private int currentFrame = 0;
+    private int lastFrameSended = 0;
+
+    private boolean pause = true;
+
     public ServerScreen()
     {
     }
 
+    //el servidor es autoritario
+    //recibe los comandos de los clientes y los aplica
+    //envía el estado real del juego a 10Hz
+    //ignora las entradas de teclado
+    //no renderiza
+    //
+
+    //el cliente envía los comandos al servidor
+    //los aplica localmente y corrije al recibir la posta
+    //para los elementos ajenos aplica interpolacion
+    //no cobrar gol localmente
+
     @Override
     public void show()
     {
+        world = new World(Constants.GRAVITY, true);
+        level = new ServerLevel(world);
+
         indexesAvailable.add(0);
         indexesAvailable.add(1);
 
@@ -44,6 +70,8 @@ public class ServerScreen extends ScreenAdapter
 
                     if(indexesAvailable.isEmpty()) //si está vacía hay dos players
                     {
+                        pause = false; //comienza el juego
+
                         serverSocket.getBroadcastOperations()
                                 .sendEvent(Events.BEGIN.name(), "");
                     }
@@ -60,30 +88,61 @@ public class ServerScreen extends ScreenAdapter
 
                 if(players.containsKey(client.getSessionId().toString()))
                 {
+                    pause = true;
+
                     int index = players.remove(client.getSessionId().toString());
                     indexesAvailable.add(index);
                     Gdx.app.log("server", "freeing player number " + index);
                 }
         });
 
-        serverSocket.addEventListener(Events.ACTION.name(), String.class,
-                (client, data, ackSender) -> {
-                    Gdx.app.log("server", "action event with data: " + data);
-                    serverSocket.getBroadcastOperations().sendEvent(Events.ACTION.name(),
-                            client.getSessionId().toString(), data);
-                });
+//        serverSocket.addEventListener(Events.ACTION.name(), String.class,
+//                (client, data, ackSender) -> {
+//                    Gdx.app.log("server", "action event with data: " + data);
+//                    serverSocket.getBroadcastOperations().sendEvent(Events.ACTION.name(),
+//                            client.getSessionId().toString(), data);
+//                });
 
         Gdx.app.log("server", "starting server");
         serverSocket.start();
 
-        try
+//        try
+//        {
+//            Thread.sleep(Integer.MAX_VALUE);
+//        }
+//        catch (InterruptedException e)
+//        {
+//            e.printStackTrace();
+//        }
+//        serverSocket.stop();
+    }
+
+    @Override
+    public void render(float delta)
+    {
+        if(!pause)
         {
-            Thread.sleep(Integer.MAX_VALUE);
+            world.step(1 / 60f, 6, 2);
+
+            //todo aplicar entradas recibidas de clientes al level
+            level.update(delta);
+
+            currentFrame++;
+
+            if((currentFrame - lastFrameSended) == 6)
+            {
+                lastFrameSended = currentFrame;
+
+                serverSocket.getBroadcastOperations()
+                        .sendEvent(Events.GAME_STATE.name(),
+                                new Json().toJson(level.getState()));
+            }
         }
-        catch (InterruptedException e)
-        {
-            e.printStackTrace();
-        }
-        serverSocket.stop();
+    }
+
+    @Override
+    public void dispose()
+    {
+        world.dispose();
     }
 }
