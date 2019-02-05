@@ -7,7 +7,10 @@ import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.physics.box2d.joints.MotorJoint;
+import com.badlogic.gdx.physics.box2d.joints.MotorJointDef;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Queue;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.luciano.fobal.Scenes.Hud;
@@ -51,7 +54,14 @@ public class Level
     private GameMode gameMode;
 
     private GameStatePacket delayedState; //se carga asincrónicamente, se aplica sincrónicamente
-    public FobalInput currentInput;
+    public FobalInput currentInput = FobalInput.NONE;
+
+    private final int QUEUE_SIZE = 6; //cantidad de frames seguidos que se almacenan inputs
+    private Queue<FobalInput> inputQueue = new Queue<>(QUEUE_SIZE);
+
+    private MotorJoint ballMotor;
+    private MotorJoint p1Motor;
+    private MotorJoint p2Motor;
 
     public Level(World world, Hud hud, GameMode gameMode)
     {
@@ -102,6 +112,26 @@ public class Level
                 new Vector2(0, height/2/PPM),
                 Constants.PARED_GROSOR,
                 height/PPM));
+
+
+        MotorJointDef jdef = new MotorJointDef();
+        jdef.bodyB = pelota.body;
+        jdef.bodyA = contorno.get(0).body;
+        jdef.maxForce = 0f;
+        jdef.maxTorque = 0f;
+        jdef.collideConnected = true;
+        ballMotor = (MotorJoint) world.createJoint(jdef);
+
+        jdef = new MotorJointDef();
+        jdef.bodyB = players[0].body;
+        jdef.bodyA = contorno.get(0).body;
+        jdef.maxForce = 0f;
+        jdef.maxTorque = 0f;
+        jdef.collideConnected = true;
+        p1Motor = (MotorJoint) world.createJoint(jdef);
+
+        jdef.bodyB = players[1].body;
+        p2Motor = (MotorJoint) world.createJoint(jdef);
     }
 
     public void update(float delta)
@@ -162,32 +192,59 @@ public class Level
     {
         for(Jugador player: players)
         {
-            if(!player.remote)
+            if(!player.remote) //si es remoto ignoro las entradas locales
             {
-                currentInput = null;
+                currentInput = FobalInput.NONE;
 
                 if (Gdx.input.isKeyPressed(player.left))
                 {
                     currentInput = FobalInput.LEFT;
-                    player.moveLeft();
                 }
                 if (Gdx.input.isKeyPressed(player.right))
                 {
                     currentInput = FobalInput.RIGHT;
-                    player.moveRight();
                 }
                 if (Gdx.input.isKeyJustPressed(player.up))
                 {
                     currentInput = FobalInput.UP;
-                    player.jump();
                 }
                 if (Gdx.input.isKeyJustPressed(player.kick))
                 {
                     currentInput = FobalInput.KICK;
-                    player.kick();
+                }
+
+                if(gameMode == GameMode.MULTI_PLAYER)
+                {
+                    if (inputQueue.size >= QUEUE_SIZE-1)
+                    {
+                        inputQueue.addFirst(currentInput);
+                        currentInput = inputQueue.removeLast();
+
+                        applyInput(currentInput, player);
+                    }
+                    else
+                    {
+                        inputQueue.addFirst(currentInput);
+                    }
+                }
+                else if(gameMode == GameMode.SINGLE_PLAYER)
+                {
+                    applyInput(currentInput, player);
                 }
             }
         }
+    }
+
+    private void applyInput(FobalInput input, Jugador player)
+    {
+        if(input == FobalInput.LEFT)
+            player.moveLeft();
+        else if(input == FobalInput.RIGHT)
+            player.moveRight();
+        else if(input == FobalInput.UP)
+            player.jump();
+        else if(input == FobalInput.KICK)
+            player.kick();
     }
 
     private void gol(boolean arcoDerecho)
@@ -233,15 +290,36 @@ public class Level
 
     private void applyState(GameStatePacket newState)
     {
-        players[0].body.setTransform(newState.getP1Pos(), 0);
+//        p1Motor.setMaxForce(0f);
+//        p1Motor.setLinearOffset(newState.getP1Pos().sub(p1Motor.getBodyA().getPosition()));
+//        players[0].body.setLinearVelocity(newState.getP1Vel());
+//        players[0].foot.setTransform(newState.getP1FootPos(), newState.getP1FootAng());
+//        p2Motor.setMaxForce(0f);
+//        p2Motor.setLinearOffset(newState.getP1Pos().sub(p2Motor.getBodyA().getPosition()));
+//        players[1].body.setLinearVelocity(newState.getP2Vel());
+//        players[1].foot.setTransform(newState.getP2FootPos(), newState.getP2FootAng());
+
+        //el estado (la posición solamente) de la pelota se aplica a través de la motor joint
+//        ballMotor.setMaxForce(0f);
+//        ballMotor.setLinearOffset(newState.getBallPos().sub(ballMotor.getBodyA().getPosition()));
+//        pelota.body.setLinearVelocity(newState.getBallVel());
+//        pelota.body.setAngularVelocity(newState.getBallAngVel());
+
+        final float SLACK = 0.05f;
+
+        if(players[0].body.getPosition().dst(newState.getP1Pos()) > SLACK)
+            players[0].body.setTransform(newState.getP1Pos(), 0);
         players[0].body.setLinearVelocity(newState.getP1Vel());
         players[0].foot.setTransform(newState.getP1FootPos(), newState.getP1FootAng());
-        players[1].body.setTransform(newState.getP2Pos(), 0);
+
+        if(players[1].body.getPosition().dst(newState.getP2Pos()) > SLACK/5)
+            players[1].body.setTransform(newState.getP2Pos(), 0);
         players[1].body.setLinearVelocity(newState.getP2Vel());
         players[1].foot.setTransform(newState.getP2FootPos(), newState.getP2FootAng());
 
-        pelota.body.setTransform(newState.getBallPos(),
-                                pelota.body.getAngle());
+        if(pelota.body.getPosition().dst(newState.getBallPos()) > SLACK)
+            pelota.body.setTransform(newState.getBallPos(),
+                                    pelota.body.getAngle());
         pelota.body.setLinearVelocity(newState.getBallVel());
         pelota.body.setAngularVelocity(newState.getBallAngVel());
 

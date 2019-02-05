@@ -16,10 +16,7 @@ import com.luciano.fobal.Scenes.Hud;
 import com.luciano.fobal.packets.ActionPacket;
 import com.luciano.fobal.packets.GameStatePacket;
 import com.luciano.fobal.packets.InputPacket;
-import com.luciano.fobal.utils.Constants;
-import com.luciano.fobal.utils.Events;
-import com.luciano.fobal.utils.FobalContactListener;
-import com.luciano.fobal.utils.GameMode;
+import com.luciano.fobal.utils.*;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 
@@ -146,7 +143,7 @@ public class MultiScreen extends ScreenAdapter
 
             level.update(delta);
 
-            if (level.currentInput != null && socket != null)
+            if (level.currentInput != FobalInput.NONE && socket != null)
             {
                 socket.emit(Events.INPUT.name(),
                         new Json().toJson(new InputPacket(level.currentInput)));
@@ -167,7 +164,7 @@ public class MultiScreen extends ScreenAdapter
                     Constants.BACKGROUND_COLOR.a);
             Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-            debugRenderer.render(world, level.viewport.getCamera().combined);
+//            debugRenderer.render(world, level.viewport.getCamera().combined);
 
             level.render(batch);
 

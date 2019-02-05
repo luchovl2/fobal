@@ -139,12 +139,11 @@ public class ServerScreen extends ScreenAdapter
         {
             world.step(1 / 60f, 6, 2);
 
-            //todo aplicar entradas recibidas de clientes al level
             level.update(delta);
 
             currentFrame++;
 
-            if((currentFrame - lastFrameSended) == 5)
+            if((currentFrame - lastFrameSended) == 6)
             {
                 lastFrameSended = currentFrame;
 

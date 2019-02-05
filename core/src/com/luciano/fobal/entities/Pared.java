@@ -9,7 +9,7 @@ import com.luciano.fobal.utils.CreateBody;
 
 public class Pared
 {
-    private Body body;
+    public Body body;
     private World world;
 
     public Pared(World world, Vector2 posicion, float ancho, float largo)
