@@ -197,6 +197,7 @@ public class Level
                 currentInput = FobalInput.NONE;
 
                 if (Gdx.input.isKeyPressed(player.left))
+//                if (Gdx.input.isKeyJustPressed(player.left))
                 {
                     currentInput = FobalInput.LEFT;
                 }

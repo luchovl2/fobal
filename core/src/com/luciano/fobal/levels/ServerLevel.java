@@ -174,4 +174,22 @@ public class ServerLevel
             player.respawn();
         pelota.respawn();
     }
+
+    public void applyState(GameStatePacket newState)
+    {
+        players[0].body.setTransform(newState.getP1Pos(), 0);
+        players[0].body.setLinearVelocity(newState.getP1Vel());
+        players[0].foot.setTransform(newState.getP1FootPos(), newState.getP1FootAng());
+
+        players[1].body.setTransform(newState.getP2Pos(), 0);
+        players[1].body.setLinearVelocity(newState.getP2Vel());
+        players[1].foot.setTransform(newState.getP2FootPos(), newState.getP2FootAng());
+
+        pelota.body.setTransform(newState.getBallPos(), pelota.body.getAngle());
+        pelota.body.setLinearVelocity(newState.getBallVel());
+        pelota.body.setAngularVelocity(newState.getBallAngVel());
+
+        score1 = newState.getScore1();
+        score2 = newState.getScore2();
+    }
 }

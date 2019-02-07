@@ -139,16 +139,17 @@ public class MultiScreen extends ScreenAdapter
     {
         if(!isPaused)
         {
-            world.step(1 / 60f, 6, 2);
+            world.step(1/60f, 6, 2);
 
             level.update(delta);
 
             if (level.currentInput != FobalInput.NONE && socket != null)
             {
                 socket.emit(Events.INPUT.name(),
-                        new Json().toJson(new InputPacket(level.currentInput)));
+                        new Json().toJson(new InputPacket(currentFrame, level.currentInput)));
             }
-//            currentFrame++;
+
+            currentFrame++;
 //            if((currentFrame - lastFrameSended) == 2)
 //            {
 //                lastFrameSended = currentFrame;

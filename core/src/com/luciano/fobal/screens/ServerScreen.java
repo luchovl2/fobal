@@ -7,6 +7,7 @@ import com.badlogic.gdx.utils.Json;
 import com.corundumstudio.socketio.Configuration;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.luciano.fobal.levels.ServerLevel;
+import com.luciano.fobal.packets.GameStatePacket;
 import com.luciano.fobal.packets.InputPacket;
 import com.luciano.fobal.utils.Constants;
 import com.luciano.fobal.utils.Events;
@@ -22,6 +23,10 @@ public class ServerScreen extends ScreenAdapter
     private Map<String, Integer> players = new HashMap<>(2);
     private Queue<Integer> indexesAvailable = new LinkedList<>();
 
+    private final int OLD_STATES_SIZE = 18;
+    private Map<Integer, GameStatePacket> oldStates = new HashMap<>(OLD_STATES_SIZE);
+    private int oldestState = 0;
+
     private World world;
     private ServerLevel level;
 
@@ -29,6 +34,10 @@ public class ServerScreen extends ScreenAdapter
     private int lastFrameSended = 0;
 
     private boolean pause = true;
+    private boolean rewind = false;
+    private int rewindToFrame;
+    private FobalInput[] pastInputs = new FobalInput[2];
+    private List<FobalInput[]> listInputs = new ArrayList<>(6);
 
     public ServerScreen()
     {
@@ -39,12 +48,6 @@ public class ServerScreen extends ScreenAdapter
     //envía el estado real del juego a 10Hz
     //ignora las entradas de teclado
     //no renderiza
-    //
-
-    //el cliente envía los comandos al servidor
-    //los aplica localmente y corrije al recibir la posta
-    //para los elementos ajenos aplica interpolacion
-    //no cobrar gol localmente
 
     @Override
     public void show()
@@ -56,6 +59,9 @@ public class ServerScreen extends ScreenAdapter
 
         indexesAvailable.add(0);
         indexesAvailable.add(1);
+
+        pastInputs[0] = FobalInput.NONE;
+        pastInputs[1] = FobalInput.NONE;
 
         Configuration config = new Configuration();
         config.setPort(Constants.PORT);
@@ -107,29 +113,62 @@ public class ServerScreen extends ScreenAdapter
                     {
                         int index = players.get(client.getSessionId().toString());
                         InputPacket packet = new Json().fromJson(InputPacket.class, data);
-                        level.inputs[index] = packet.getInput();
+
+//                        rewind = true;
+//                        rewindToFrame = packet.getFrame();
+//                        pastInputs[index] = packet.getInput();
+
+                        pastInputs[index] = packet.getInput();
+
+
+//                        level.inputs[index] = packet.getInput();
                     }
                 }));
 
-//        serverSocket.addEventListener(Events.ACTION.name(), String.class,
-//                (client, data, ackSender) -> {
-//                    Gdx.app.log("server", "action event with data: " + data);
-//                    serverSocket.getBroadcastOperations().sendEvent(Events.ACTION.name(),
-//                            client.getSessionId().toString(), data);
-//                });
-
         Gdx.app.log("server", "starting server");
         serverSocket.start();
+    }
 
-//        try
-//        {
-//            Thread.sleep(Integer.MAX_VALUE);
-//        }
-//        catch (InterruptedException e)
-//        {
-//            e.printStackTrace();
-//        }
-//        serverSocket.stop();
+    private void rewindAndCatchUp(float delta)
+    {
+        //preguntar si se tiene el estado al que hay que ir
+        //si no ir al más viejo que haya
+        if(rewindToFrame < oldestState)
+        {
+            rewindToFrame = oldestState;
+        }
+        Gdx.app.log("server", "curr: " + currentFrame + "; rewind: " + rewindToFrame);
+
+        //rewind
+        level.applyState(oldStates.get(rewindToFrame));
+        level.inputs = pastInputs.clone();
+        pastInputs[0] = FobalInput.NONE;
+        pastInputs[1] = FobalInput.NONE;
+
+        //catch up
+        for (int i = 0; i < (currentFrame - rewindToFrame); i++)
+        {
+            world.step(1/60f, 6, 2);
+            level.update(delta);
+
+            //actualizar el mapa de estados viejos
+            oldStates.replace(rewindToFrame+i, level.getState());
+        }
+
+        //ojo que si llega otra input para el mismo frame viejo se pierde la
+        //primera input recibida
+    }
+
+    private void catchUp()
+    {
+        //avanzar los pasos aplicando las entradas correspondientes
+        for(int i=0; i<(6); i++)
+        {
+            world.step(1/60f, 6, 2);
+            level.inputs = listInputs.get(i);
+            level.update(1/60f);
+        }
+        listInputs.clear();
     }
 
     @Override
@@ -137,14 +176,33 @@ public class ServerScreen extends ScreenAdapter
     {
         if(!pause)
         {
-            world.step(1 / 60f, 6, 2);
+//            world.step(1/60f, 6, 2);
+//
+//            level.update(delta);
 
-            level.update(delta);
+            //enlistar las entradas más recientes recibidas
+            listInputs.add(pastInputs.clone());
+            pastInputs[0] = FobalInput.NONE;
+            pastInputs[1] = FobalInput.NONE;
 
             currentFrame++;
 
+            //agregar nuevo estado al historial
+            //actualizar "oldestState" si corresponde
+//            oldStates.put(currentFrame, level.getState());
+//
+//            if(oldStates.size() >= OLD_STATES_SIZE) //cuando se llena quitar el más viejo
+//            {
+//                oldStates.remove(oldestState);
+//                oldestState++;
+//            }
+
+            //enviar si corresponde
             if((currentFrame - lastFrameSended) == 6)
             {
+//                Gdx.app.log("server", "frame: " + currentFrame + "; list: " + listInputs.size());
+                catchUp();
+
                 lastFrameSended = currentFrame;
 
                 serverSocket.getBroadcastOperations()
