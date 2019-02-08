@@ -56,7 +56,7 @@ public class Level
     private GameStatePacket delayedState; //se carga asincrónicamente, se aplica sincrónicamente
     public FobalInput currentInput = FobalInput.NONE;
 
-    private final int QUEUE_SIZE = 6; //cantidad de frames seguidos que se almacenan inputs
+    private final int QUEUE_SIZE = 1; //cantidad de frames seguidos que se almacenan inputs
     private Queue<FobalInput> inputQueue = new Queue<>(QUEUE_SIZE);
 
     private MotorJoint ballMotor;
@@ -197,7 +197,6 @@ public class Level
                 currentInput = FobalInput.NONE;
 
                 if (Gdx.input.isKeyPressed(player.left))
-//                if (Gdx.input.isKeyJustPressed(player.left))
                 {
                     currentInput = FobalInput.LEFT;
                 }
